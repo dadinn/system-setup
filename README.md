@@ -12,3 +12,11 @@ Installation instructions:
 3. Clone this repo:
 
         git clone --recursive https://github.com/dadinn/system-setup
+
+4. Format hard drives
+
+   Go into the `init-instroot` directory and follow instructions
+
+5. Install the Debian operating system
+
+   Go into the `debian-setup` directory and follow instructions

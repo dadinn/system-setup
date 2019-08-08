@@ -15,8 +15,8 @@ Installation instructions:
 
 4. Format hard drives
 
-   Go into the `init-instroot` directory and follow instructions
+   Go into the `init-instroot` directory and [follow instructions](https://github.com/dadinn/init-instroot)
 
 5. Install the Debian operating system
 
-   Go into the `debian-setup` directory and follow instructions
+   Go into the `debian-setup` directory and [follow instructions](https://github.com/dadinn/debian-setup)

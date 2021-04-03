@@ -1,6 +1,6 @@
 [submodule "debian-setup"]
 	path = debian-setup
-	url = ../debian-setup
+	url = ../debian-setup2
 [submodule "init-instroot"]
 	path = init-instroot
 	url = ../init-instroot

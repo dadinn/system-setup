@@ -4,3 +4,6 @@
 [submodule "init-instroot"]
 	path = init-instroot
 	url = ../init-instroot
+[submodule "tests/common"]
+	path = tests/common
+	url = ../common

@@ -1,0 +1,23 @@
+#!/bin/env expect
+
+set timeout -1
+set log     [lindex $argv 0]
+
+spawn qemu-system-x86_64 -enable-kvm -m 4096 -serial stdio --virtfs local,path=/home/dadinn/Workspace/dev/besenczy/infra/system-setup,mount_tag=sources,security_model=passthrough -cdrom /home/dadinn/Downloads/isos/archlinux-2020.01.01-x86_64.iso -display none 
+
+expect "Press \\\[Tab\\\] to edit options"
+send "\t console=ttyS0\n"
+
+expect "archiso login:"
+send "root\n"
+
+expect "# "
+send "mkdir /mnt/sources\n"
+expect "# "
+send "mount -t 9p -o ro sources /mnt/sources\n"
+expect "# "
+send "pacman -Sy\n"
+expect "# "
+send "pacman -S guile --noconfirm\n"
+
+interact

@@ -31,8 +31,9 @@
      (default
        ;;  "/home/dadinn/Downloads/isos/debian-live-10.3.0-amd64-standard.iso"
        ;; ArchLinux Syslinux bootloader is configured to write to serial port,
+       ;;"/home/dadinn/Downloads/isos/archlinux-2020.01.01-x86_64.iso"
        ;; unlike other distro (like Debian)
-       "/home/dadinn/Downloads/isos/archlinux-2020.01.01-x86_64.iso")
+       "/home/dadinn/Downloads/isos/debian-live-10.3.0-amd64-standard.iso")
      ;; (predicate ,(lambda (path) (file-exists? path)))
      )
     (name
@@ -64,13 +65,32 @@
 	      (car arg)))
 	args)) ","))
 
+(define (not-nul? c) (not (eqv? c #\nul)))
+
 (define (matcher pattern)
   (lambda (s eof?)
     (if (not eof?)
 	;;This is needed to support matching against output with null characters
-	(let ((stuff (string-filter (lambda (c) (not (eqv? c #\nul))) s)))
+	(let ((stuff (string-filter not-nul? s)))
+	  (with-output-to-file "log.txt"
+	    (lambda ()
+	      (display (string-append "EXPECTING: " pattern))
+	      (newline)
+	      (display "MATCHING AGAINST:")
+	      (newline)
+	      (display stuff)))
 	  (regex:string-match pattern stuff))
 	#f)))
+
+(define (display-slow text port)
+  ;; If Isolinux serial command speed is set too low, QEMU would truncate large strings.
+  ;; https://tldp.org/HOWTO/Remote-Serial-Console-HOWTO/configure-boot-loader-syslinux.html
+  ;; To workaround this we need to print long text slowly.
+  (for-each
+   (lambda (c)
+     (display c port)
+     (usleep 10000))
+   (string->list text)))
 
 (define* (run-qemu #:key name memory cdrom sources devices)
   (let ((port
@@ -79,8 +99,9 @@
 	  "qemu-system-x86_64"
 	  "-enable-kvm"
 	  "-m" (or memory "4096")
-	  "-serial" "stdio"
-	  "-display" "none"
+	  "-nographic"
+	  ;;"-serial" "stdio"
+	  ;;"-display" "none"
 	  ;;"-smbios" "uefi=on")
 	  "-cdrom" cdrom
 	  "-virtfs"
@@ -105,6 +126,10 @@
 	 (cdrom-path (hash-ref options 'cdrom))
 	 (sources-path (hash-ref options 'sources))
 	 (sources-path (or sources-path (dirname (dirname (current-filename)))))
+	 (live-username "user")
+	 (live-password "live")
+	 (root-dev "/dev/vda")
+	 (luks-passhprase "fuckshit")
 	 (help? (hash-ref options 'help)))
     (cond
      (help?
@@ -132,18 +157,33 @@ Valid options are:
 	      #:memory "4096"
 	      #:cdrom cdrom-path
 	      #:sources sources-path)))
-	(expect-strings
-	 ("Press \\[Tab\\] to edit options"
-	  (display "\t console=ttyS0" expect-port)
+	(expect
+	 ((matcher "\"Booting .* Installer with Speech Synthesis\\.\\.\\.\"")
+	  (sleep 1)
+	  (display "\t" expect-port)
+	  (sleep 1)
+	  (display " console=ttyS0" expect-port)
+	  (sleep 1)
+	  ;;(display-slow "\t console=ttyS0" expect-port)
 	  (newline expect-port)))
-	(expect-strings
-	 ("archiso login:"
-	  (display "root" expect-port)
+	(expect
+	 ((matcher "debian login:")
+	  (display "user" expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "Password:")
+	  (display "live" expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "\\$ ")
+	  (display "sudo -i" expect-port)
 	  (newline expect-port)))
 	(expect
 	 ((matcher "# ")
 	  (display "export LC_ALL=C" expect-port)
-	  (newline expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "# ")
 	  (display "mkdir /mnt/sources" expect-port)
 	  (newline expect-port)))
 	(expect
@@ -152,14 +192,49 @@ Valid options are:
 	  (newline expect-port)))
 	(expect
 	 ((matcher "# ")
-	  (display "pacman -Syy guile --noconfirm" expect-port)
+	  (display "apt update" expect-port)
 	  (newline expect-port)))
 	(expect
 	 ((matcher "# ")
-	  (display "LC_ALL=C lsblk" expect-port)
-	  (newline expect-port)
+	  (display "apt install -y guile-2.2" expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "# ")
+	  (display "lsblk" expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "# ")
 	  (display "ls -la /mnt/sources/" expect-port)
-	  (newline expect-port))))))))
+	  (newline expect-port)))
+	(expect
+	 ((matcher "# ")
+	  (display "/mnt/sources/init-instroot/init-instroot.scm -r /dev/vda -s 100M" expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "Are you sure\\? \\(Type uppercase yes\\): ")
+	  (display "YES" expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher (string-append "Enter passphrase for " root-dev "[^:]*: "))
+	  (display luks-passhprase expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "Verify passphrase:")
+	  (display luks-passhprase expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher (string-append "Enter passphrase for " root-dev "[^:]*: "))
+	  (display luks-passhprase expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "Would you like to overwrite LUKS device with random data\\? \\[y/N\\]")
+	  (newline expect-port)))
+	(expect
+	 ((matcher "# ")
+	  (display "lsblk" expect-port)
+	  (newline expect-port)))
+	;; not sure if this does anything... trying to get stuff printed.
+	(flush-all-ports))))))
 
 
 ;; Matenak mukodott Archlinux-szal:

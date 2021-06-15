@@ -55,16 +55,6 @@
      (description
       "This usage help..."))))
 
-(define-macro (format-args . args)
-  `(string-join
-    (list
-     ,@(map
-	(lambda (arg)
-	  (if (not (nil? (cdr arg)))
-	      `(string-append ,(car arg) "=" ,(cdr arg))
-	      (car arg)))
-	args)) ","))
-
 (define (not-nul? c) (not (eqv? c #\nul)))
 
 (define (matcher pattern)
@@ -105,18 +95,18 @@
 	  ;;"-smbios" "uefi=on")
 	  "-cdrom" cdrom
 	  "-virtfs"
-	  (format-args
-	   ("local")
-	   ("readonly")
-	   ("path" . sources)
-	   ("mount_tag" . "sources")
-	   ("security_model" . "passthrough"))
+	  (utils:emit-arg-alist
+	   `(("local")
+	     ("readonly")
+	     ("path" . ,sources)
+	     ("mount_tag" . "sources")
+	     ("security_model" . "passthrough")))
 	  "-drive"
-	  (format-args
-	   ("file" . (utils:path "disks" (string-append name ".img")))
-	   ("format" . "qcow2")
-	   ("if" . "virtio")
-	   ("media" . "disk")))))
+	  (utils:emit-arg-alist
+	   `(("file" . ,(utils:path "disks" (string-append name ".img")))
+	     ("format" . "qcow2")
+	     ("if" . "virtio")
+	     ("media" . "disk"))))))
     (setvbuf port 'none)
     port))
 

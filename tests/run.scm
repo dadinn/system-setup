@@ -72,16 +72,6 @@
 	  (regex:string-match pattern stuff))
 	#f)))
 
-(define (display-slow text port)
-  ;; If Isolinux serial command speed is set too low, QEMU would truncate large strings.
-  ;; https://tldp.org/HOWTO/Remote-Serial-Console-HOWTO/configure-boot-loader-syslinux.html
-  ;; To workaround this we need to print long text slowly.
-  (for-each
-   (lambda (c)
-     (display c port)
-     (usleep 10000))
-   (string->list text)))
-
 (define* (run-qemu #:key name memory cdrom sources devices)
   (let ((port
 	 (popen:open-pipe*
@@ -153,8 +143,6 @@ Valid options are:
 	  (display "\t" expect-port)
 	  (sleep 1)
 	  (display " console=ttyS0" expect-port)
-	  (sleep 1)
-	  ;;(display-slow "\t console=ttyS0" expect-port)
 	  (newline expect-port)))
 	(expect
 	 ((matcher "debian login:")

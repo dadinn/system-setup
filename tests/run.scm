@@ -108,6 +108,9 @@
 	 (sources-path (or sources-path (dirname (dirname (current-filename)))))
 	 (live-username "user")
 	 (live-password "live")
+	 (hostname "shitfuck")
+	 (sudo-username "fuckshit")
+	 (sudo-password "fuckshit")
 	 (root-dev "/dev/vda")
 	 (luks-passhprase "fuckshit")
 	 (help? (hash-ref options 'help)))
@@ -178,14 +181,6 @@ Valid options are:
 	  (newline expect-port)))
 	(expect
 	 ((matcher "# ")
-	  (display "lsblk" expect-port)
-	  (newline expect-port)))
-	(expect
-	 ((matcher "# ")
-	  (display "ls -la /mnt/sources/" expect-port)
-	  (newline expect-port)))
-	(expect
-	 ((matcher "# ")
 	  (display "/mnt/sources/init-instroot/init-instroot.scm -r /dev/vda -s 100M" expect-port)
 	  (newline expect-port)))
 	(expect
@@ -209,10 +204,31 @@ Valid options are:
 	  (newline expect-port)))
 	(expect
 	 ((matcher "# ")
-	  (display "lsblk" expect-port)
+	  (display
+	   (string-append
+	    "/mnt/sources/debian-setup/install.scm -n "
+	    hostname " -s " sudo-username)
+	   expect-port)
 	  (newline expect-port)))
-	;; not sure if this does anything... trying to get stuff printed.
-	(flush-all-ports))))))
+	(expect
+	 ((matcher "Please type \"Hello#123\" here: ")
+	  (display "Hello#123" expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "New password: ")
+	  (display sudo-password expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "Retype new password: ")
+	  (display sudo-password expect-port)
+	  (newline expect-port)))
+	(expect
+	 ((matcher "Remove configuration script and temporary files\\? \\[y/N\\]")
+	  (newline expect-port)))
+	(expect
+	 ((matcher "Ready to finish installation and reboot the system\\? \\[Y/n\\]")
+	  (newline expect-port)))
+	(popen:close-pipe expect-port))))))
 
 
 ;; Matenak mukodott Archlinux-szal:
